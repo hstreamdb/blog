@@ -22,7 +22,7 @@ jobs:
 
       - name: Setup Haskell
         run: |
-          docker run -td --name builder --rm -v $(pwd):/srv -v ~/.cabal:/root/.cabal -w /srv haskell bash
+          docker run -td --name builder --rm -v $(pwd):/srv -v ~/.cabal:/root/.cabal -w /srv haskell:8.10 bash
 
       - name: Build
         run: |
