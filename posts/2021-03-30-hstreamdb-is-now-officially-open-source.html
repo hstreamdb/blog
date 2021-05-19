@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>HStream Blog - HStreamDB is now officially open source</title>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" />
+    <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    <link rel="stylesheet" href="../css/main.css" />
+
+    <noscript>
+      <div class="notice-warning noscript">You don't have javascript enabled. Good luck! :(</div>
+    </noscript>
+    <!--[if IE]>
+      <div class="notice-warning">Oh, you are using Internet Explorer! Good luck... :(</div>
+    <![endif]-->
+  </head>
+  <body>
+    <header>
+      <nav class="indigo">
+        <div class="nav-wrapper">
+          <a href="#!" class="brand-logo">HStreamBlog</a>
+          <a href="#" data-target="mobile-sidenav" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+          <ul id="nav-mobile" class="right hide-on-med-and-down">
+            <li><a href="../">Home</a></li>
+            <li><a href="../about.html">About</a></li>
+          </ul>
+        </div>
+      </nav>
+      <ul class="sidenav" id="mobile-sidenav">
+        <li><a href="../">Home</a></li>
+        <li><a href="../about.html">About</a></li>
+      </ul>
+    </header>
+
+    <main role="main" class="container">
+        <h1 class="title post-title">HStreamDB is now officially open source</h1>
+        <div class="post-content"><article>
+  <section class="header">
+    Posted on March 30, 2021  by Bin Wang 
+  </section>
+  <section>
+    <h2 id="intro">Intro</h2>
+<p>To better address the needs for real-time streaming data storage and processing in various businesses, we (EMQ) have been searching for an optimal system and architecture.</p>
+<p>We have presented a brand new concept in the previous post <a href="https://www.emqx.io/blog/birth-of-streaming-database">“When Database Meets Stream Computing: The Birth of Streaming Database!”</a> - “Streaming Database” - a new database category. <strong>In the article today, we will introduce HStreamDB, a Streaming Database currently being developed by the Haskell Team from EMQ</strong>. Comparing it with the existing unstructured streaming solutions, we believe that <a href="http://hstream.io/">Streaming Database pioneered by HStreamDB</a> will be the best choice in the era of real-time data processing. Also that it will become the core infrastructure of software systems in the future.</p>
+<h2 id="hstream-streaming-database-overview">HStream Streaming Database Overview</h2>
+<p><strong>HStreamDB is a streaming database designed for streaming data, with complete lifecycle management for accessing, storing, processing, and distributing large-scale real-time data streams</strong>. It uses standard SQL (and its stream extensions) as the primary interface language, with real-time as the main feature, and aims to simplify the operation and management of data streams and the development of real-time applications.</p>
+<p>The figure below shows the overall architecture of HStreamDB. A single HStreamDB node consists of two core components, HStream Server (HSQL) and HStream Storage (HStorage). And an HStream cluster consists of several peer-to-peer HStreamDB nodes. Clients can connect to any HStreamDB node in the cluster and perform stream processing and analysis through your familiar SQL language.</p>
+<p><img class="responsive-img" src="https://static.emqx.net/images/faab4a8b1d02f14bc5a4153fe37f21ca.png" /></p>
+<center>
+HStreamDB Structure Overview
+</center>
+<p>HStream Server (HSQL), the core computation component of HStreamDB, is designed to be stateless. The primary responsibility of HSQL is to support client connection management, security authentication, SQL parsing and optimization, and operations for stream computation such as task creation, scheduling, execution, management, etc.</p>
+<h3 id="hstream-server">HStream Server</h3>
+<p><strong>HStream Server (HSQL) top-down layered structures:</strong></p>
+<ol type="1">
+<li>Access Layer</li>
+</ol>
+<p>It is in charge of protocol processing, connection management, security authentication, and access control for client requests.</p>
+<ol start="2" type="1">
+<li>SQL layer</li>
+</ol>
+<p>To perform most stream processing and real-time analysis tasks, clients interact with HStreamDB through SQL statements. This layer is mainly responsible for compiling these SQL statements into logical data flow diagrams. Like the classic database system model, it contains two core sub-components: SQL parser and SQL optimizer. The SQL parser deals with the lexical and syntactic analysis and the compilation from SQL statements to relational algebraic expressions; the SQL optimizer will optimize the generated execution plan based on various rules and contexts.</p>
+<ol start="3" type="1">
+<li>Stream Layer</li>
+</ol>
+<p>Stream layer includes the implementation of various stream processing operators, the data structures and DSL to express data flow diagrams, and the support for user-defined functions as processing operators. So, it is responsible for selecting the corresponding operator and optimization to generate the executable data flow diagram.</p>
+<ol start="4" type="1">
+<li>Runtime Layer</li>
+</ol>
+<p>It is the layer responsible for executing the computation task of data flow diagrams and returning the results. The main components of the layer include task scheduler, state manager, and execution optimizer. The schedule takes care of the tasks scheduling between available computation resources, such as multiple threads of a single process, multiple processors of a single machine, and multiple machines or containers of a distributed cluster.</p>
+<p>HStream Storage (HStore), the core storage component of HStreamDB, is a low-latency storage component explicitly designed for streaming data. It can store large-scale real-time data in a distributed and persistent manner and seamlessly interface with large-capacity secondary storage such as S3 through the Auto-Tiering mechanism to achieve unified storage of historical and real-time data.</p>
+<p>The core storage model of HStore is a logging model that fits with streaming data. Regard data stream as an infinitely growing log, the typical operations supported include appending and reading by batches. Also, since the data stream is immutable, it generally does not support update operations.</p>
+<h3 id="hstream-storage-hstore">HStream Storage (HStore)</h3>
+<p><strong>HStream Storage (HStore) consists of following layers</strong></p>
+<ol type="1">
+<li><p>Streaming Data API layer</p>
+<p>This layer provides the core data stream management and read/write operations, including stream creation/deletion and writing to/consuming data in the stream. In the design of HStore, data streams are not stored as actual streams. Therefore, the creation of a stream is a very light-weight operation. There is no limit to the number of streams to be created in HStore. Besides, it supports concurrent writes to numerous data streams and still maintains a stable low latency. For the characteristics of data streams, HStore provides append operation to support fast data writing. While reading from stream data, it gives a subscription-based operation and pushes any new data written to the stream to the data consumer in real time.</p></li>
+<li><p>Replicator Layer</p>
+<p>This layer implements the strongly consistent replication based on an optimized Flexible Paxos consensus mechanism, ensuring the fault tolerance and high availability to data, and maximizes cluster availability through a non-deterministic data distribution policy. Moreover, it supports replication groups reconfiguration online to achieve seamless cluster data balancing and horizontal scaling.</p></li>
+<li><p>Tier1 Local Storage Layer</p>
+<p>The layer fulfilled local persistent storage needs of data based on the optimized RocksDB storage engine, which encapsulates the access interface of streaming data and can support low-latency writing and reading a large amount of data.</p></li>
+<li><p>Tier2 Offloader Layer</p>
+<p>This layer provides a unified interface encapsulation for various long-term storage systems, such as HDFS, AWS S3, etc. It supports automatic offloading of historical data to these secondary storage systems and can also be accessed through a unified streaming data interface.</p></li>
+</ol>
+<h2 id="hstreamdb-functional-architecture">HStreamDB Functional Architecture</h2>
+<p><em>Note: The following features the milestone of HStreamDB version 1.0. Some features are under continuous development and not yet fully implemented in the current version. Please stay tuned.</em></p>
+<p><img class="responsive-img" src="https://static.emqx.net/images/ca810cdf1d13ffbc1fe15ce41daa1695.png" /></p>
+<center>
+HStreamDB Functional architecture
+</center>
+<h3 id="streaming-data-processing-via-sql">Streaming data processing via SQL</h3>
+<p>HStreamDB has designed a complete processing solution based on event time. It supports basic filtering and conversion operations, aggregations by key, calculations based on various time windows, joining between data streams, and processing disordered and late messages to ensure the accuracy of calculation results. Simultaneously, the stream processing solution of HStream is highly extensible, and users can extend the interface according to their own needs.</p>
+<h3 id="materialized-view">Materialized View</h3>
+<p>HStreamDB will offer materialized view to support complex query and analysis operations on continuously updated data streams. The incremental computing engine updates the materialized view instantly according to the changes of data streams, and users can query the materialized view through SQL statements to get real-time data insights.</p>
+<h3 id="data-stream-management">Data Stream Management</h3>
+<p>HStreamDB supports the creation and management of large data streams. The creation of a data stream is a very light-weight operation based on an optimized storage design. It is possible to maintain a stable read/write latency in the case of many concurrent reads and writes.</p>
+<h3 id="persistent-storage">Persistent storage</h3>
+<p>HStreamDB provides low latency and reliable data stream storage. It ensures that written data messages are not lost and can be consumed repeatedly. HStreamDB replicates written data messages to multiple storage nodes for high availability and fault tolerance and supports dumping cold data to lower-cost storage services, such as object storage, distributed file storage, etc. This means the storage capacity can be infinitely scalable and achieve permanent storage of data.</p>
+<h3 id="schema-management-of-data-streams">Schema Management of Data Streams</h3>
+<p>HStreamDB emphasizes flexible schema support. Data streams can be schema-less or schema-ed by JSON, Avro, Protobuf, etc. It will support schema evolution and automatically manages the compatibility between multiple versions of schemas.</p>
+<h3 id="data-streams-access-and-distribution">Data streams access and distribution</h3>
+<p>Connector deals with access and distribution of HStreamDB data. They connect to various data systems, including MQTT Broker, MySQL, ElasticSearch, Redis, etc., facilitating integration with external data systems for users.</p>
+<h3 id="security-mechanism">Security Mechanism</h3>
+<p>The security will be ensured by TLS encrypted transport and OAuth and JWT based authentication and authorization mechanism. The security plug-in interface is reserved for users to extend the default security mechanisms as needed.</p>
+<h3 id="monitoring-and-om-tools">Monitoring and O&amp;M tools</h3>
+<p>We will set up a web-based console with system dashboards and visual charts, enabling detailed monitoring of cluster machine status, system key indicators, etc., which make it more convenient for O&amp;M staff to manage the cluster.</p>
+<h2 id="applications-of-hstreamdb">Applications of HStreamDB</h2>
+<h3 id="real-time-data-analysis">Real-time data analysis</h3>
+<p>Traditional data analysis usually uses batch processing techniques, which generally run on a limited pre-collected data set and have high latency. The results are often not up-to-date. In contrast, HStreamDB can analyze real-time data streams and update the results on the fly. Therefore, it can better support applications such as real-time prediction of website user activity and real-time IoT sensor data analysis. This provides more real-time data insight and avoids the error-prone and complexity of periodically scheduling in batch processing.</p>
+<h3 id="event-driven-applications">Event-driven applications</h3>
+<p>In Event-driven applications, actions or behaviors are triggered in real time by incoming events. These events can be stateless or stateful, such as real-time fraud detection in financial transactions, early warning during business process monitoring, IoT rules engine, etc. With HStreamDB, the implementation of these complex event-driven applications may only require a few SQL statements. The cost of developing and maintaining these applications will be significantly reduced.</p>
+<h3 id="real-time-data-pipeline">Real-time Data Pipeline</h3>
+<p>It often requires a complete set of ETL systems for synchronizing and migrating data between multiple data systems, such as copying data from an online transactional database to an offline data warehouse for analysis, which is expensive to develop and maintain. Their data synchronization is often not real-time or scalable. HStreamDB integrates with various external system connectors, quickly building a real-time data pipeline to realize real-time index and cache building and other data synchronization tasks.</p>
+<h3 id="online-machine-learning">Online Machine Learning</h3>
+<p>Nowadays, machine learning systems play an increasingly important role in business systems, including search, recommendation, risk control, and other events that rely extensively on machine learning systems. However, with the explosion of online business and related application use cases, conventional offline systems and machine learning platforms can no longer meet business development requirements. HStreamDB’s real-time computing engine can help machine learning systems to meet online feature extraction and real-time recommendation in real time.</p>
+<h2 id="hstreamdb-quickstart-with-docker">HStreamDB Quickstart with Docker</h2>
+<h3 id="pull-docker-images">Pull docker images</h3>
+<pre><code>docker pull hstreamdb/logdevice
+docker pull hstreamdb/hstream</code></pre>
+<h3 id="start-a-local-standalone-hstream-server-in-docker">Start a local standalone HStream-Server in Docker</h3>
+<h4 id="create-a-directory-for-storing-db-data">Create a directory for storing DB data</h4>
+<pre><code>mkdir ./dbdata</code></pre>
+<h4 id="start-local-logdevice-cluster">Start local logdevice cluster</h4>
+<pre><code>docker run -td --rm --name some-hstream-store -v dbdata:/data/store --network host hstreamdb/logdevice ld-dev-cluster --root /data/store --use-tcp</code></pre>
+<h4 id="start-hstreamdb-server">Start HStreamDB Server</h4>
+<pre><code>docker run -it --rm --name some-hstream-server -v dbdata:/data/store --network host hstreamdb/hstream hstream-server --port 6570 -l /data/store/logdevice.conf</code></pre>
+<h3 id="start-hstreamdb-cli">Start HStreamDB CLI</h3>
+<pre><code>docker run -it --rm --name some-hstream-cli -v dbdata:/data/store --network host hstreamdb/hstream hstream-client --port 6570</code></pre>
+<p>If everything works fine, you will enter an interactive CLI and see help information like:</p>
+<pre><code>Start HStream-Cli!
+Command
+  :h                        help command
+  :q                        quit cli
+  show queries              list all queries
+  terminate query &lt;taskid&gt;  terminate query by id
+  terminate query all       terminate all queries
+  &lt;sql&gt;                     run sql
+
+&gt;</code></pre>
+<h3 id="create-a-stream">Create a stream</h3>
+<p>What we are going to do first is create a stream by <code>CREATE STREAM</code> query.</p>
+<p>The <code>FORMAT</code> parameter after <code>WITH</code> specifies the format of data in the stream. Note that only <code>JSON</code> format is currently supported.</p>
+<pre><code>CREATE STREAM demo WITH (FORMAT = &quot;JSON&quot;);</code></pre>
+<p>Copy and paste this query into the interactive CLI session, and press enter to execute the statement. If everything works fine, you will get something like:</p>
+<pre><code>Right
+    ( CreateTopic
+        { taskid = 0
+        , tasksql = &quot;CREATE STREAM demo WITH (FORMAT = &quot;JSON&quot;);&quot;
+        , taskStream = &quot;demo&quot;
+        , taskState = Finished
+        , createTime = 2021 - 02 - 04 09 : 07 : 25.639197201 UTC
+        }
+    )</code></pre>
+<p>Which means the query is successfully executed.</p>
+<h3 id="run-a-continuous-query-over-the-stream">Run a continuous query over the stream</h3>
+<p>Now we can run a continuous query over the stream we just created by <code>SELECT</code> query.</p>
+<p>The query will output all records from the <code>demo</code> stream whose humidity is above 70 percent.</p>
+<pre><code>SELECT * FROM demo WHERE humidity &gt; 70 EMIT CHANGES;</code></pre>
+<p>It seems that nothing happened. But do not worry because there is no data in the stream now. Next, we will fill the stream with some data so the query can produce the output we want. Besides, please note that this <code>SELECT</code> is different from <code>SELECT</code> in other databases. The command will execute until explicitly terminated.</p>
+<h3 id="start-another-cli-session">Start another CLI session</h3>
+<pre><code>docker exec -it some-hstream-cli hstream-client --port 6570</code></pre>
+<h3 id="insert-data-into-the-stream">Insert data into the stream</h3>
+<p>Run each of the given INSERT query in the new CLI session:</p>
+<pre><code>INSERT INTO demo (temperature, humidity) VALUES (22, 80);
+INSERT INTO demo (temperature, humidity) VALUES (15, 20);
+INSERT INTO demo (temperature, humidity) VALUES (31, 76);
+INSERT INTO demo (temperature, humidity) VALUES ( 5, 45);
+INSERT INTO demo (temperature, humidity) VALUES (27, 82);
+INSERT INTO demo (temperature, humidity) VALUES (28, 86);</code></pre>
+<p>If everything works fine, the continuous query will output matching records in real time:</p>
+<pre><code>{&quot;temperature&quot;:22,&quot;humidity&quot;:80}
+{&quot;temperature&quot;:31,&quot;humidity&quot;:76}
+{&quot;temperature&quot;:27,&quot;humidity&quot;:82}
+{&quot;temperature&quot;:28,&quot;humidity&quot;:86}</code></pre>
+<h2 id="hstreamdb-open-source-community">HStreamDB Open-source Community</h2>
+<p>As an open-source software company, <a href="https://www.emqx.io/">EMQ</a> always believes in the value and power of open source. Therefore, HStreamDB is open-sourced on GitHub ever since the beginning of the project.</p>
+<p>HStreamDB is currently under development by our team, and this is an excellent opportunity and time for developers to get involved with the community.</p>
+<p><strong>We sincerely invite you to join us building the HStreamDB open source community</strong>. You can learn more about project from <a href="https://hstream.io/">HStreamDB official website</a>, or <a href="https://github.com/hstreamdb/hstream">GitHub Repo</a>. It is also welcomed to join the discussion on our <a href="https://slack-invite.hstream.io/">Slack Channel</a>. We will also host periodic open days to share the project progress and exchange technical insights.</p>
+<p>HStreamDB will support and improve the distributed processing, Schema management, SQL optimization, monitoring and operation, and maintenance in the upcoming releases.</p>
+<p>We believe that with the support from everyone who loves open source, we will create and witness the future of streaming databases together, starting from HStreamDB!</p>
+  </section>
+</article>
+</div>
+    </main>
+
+    <footer>
+      Copyright © 2020-present HStream
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="../js/main.js"></script>
+  </body>
+</html>
