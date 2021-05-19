@@ -1,9 +1,11 @@
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 import           Data.Monoid          (mappend)
 import           Hakyll
 import           Hakyll.Typescript.JS (compressJsCompiler)
-
+import           Text.HTML.TagSoup    (Tag (TagOpen))
 --------------------------------------------------------------------------------
 
 main :: IO ()
@@ -32,6 +34,7 @@ main = hakyll $ do
           >>= loadAndApplyTemplate "templates/post.html"    postCtx
           >>= loadAndApplyTemplate "templates/default.html" postCtx
           >>= relativizeUrls
+          >>= withItemBody (return . withTags \case TagOpen "img" xs -> TagOpen "img" (("class", "responsive-img"):xs); tag -> tag)
 
   match "index.html" $ do
     route idRoute
